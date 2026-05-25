@@ -126,11 +126,18 @@ async def conduct_research(request: ResearchRequest):
         # Execute the LangGraph workflow
         final_state = graph.invoke(initial_state)
         
+        # Debug: log the type of final_state
+        print(f"DEBUG: type(final_state) = {type(final_state)}")
+        print(f"DEBUG: final_state keys = {final_state.keys() if hasattr(final_state, 'keys') else 'N/A'}")
+        
         # Extract analyst information - analysts are Pydantic models, not dicts
-        analysts_list = final_state.get("analysts", [])
+        analysts_list = final_state.get("analysts", []) if isinstance(final_state, dict) else []
+        print(f"DEBUG: type(analysts_list) = {type(analysts_list)}, len = {len(analysts_list) if isinstance(analysts_list, list) else 'N/A'}")
+        
         analysts_info = []
         
-        for analyst in analysts_list:
+        for i, analyst in enumerate(analysts_list):
+            print(f"DEBUG: analyst[{i}] type = {type(analyst)}")
             # Handle both dict and Pydantic model formats
             if hasattr(analyst, 'name'):
                 # It's a Pydantic model
@@ -148,7 +155,7 @@ async def conduct_research(request: ResearchRequest):
                 ))
         
         # Get final report
-        final_report = final_state.get("final_report", "")
+        final_report = final_state.get("final_report", "") if isinstance(final_state, dict) else ""
         
         if not final_report:
             raise HTTPException(status_code=500, detail="Report generation failed - empty report")
