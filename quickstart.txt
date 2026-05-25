@@ -1,0 +1,54 @@
+# Quick Start Guide: Quick Wiki API
+
+Follow these steps to set up and run the Quick Wiki Research Assistant locally.
+
+## 1. Navigate to the Project
+Open your terminal and navigate to the project directory:
+```bash
+cd quick-wiki
+```
+
+## 2. Set Up a Virtual Environment
+Create and activate a Python virtual environment to manage dependencies:
+
+**Windows:**
+```powershell
+python -m venv venv
+.\venv\Scripts\activate
+```
+*(Note: If your environment is named `sourse`, use `.\sourse\Scripts\Activate.ps1` instead)*
+
+**macOS / Linux:**
+```bash
+python -m venv venv
+source venv/bin/activate
+```
+
+## 3. Install Dependencies
+Install the required packages using `pip`:
+```bash
+pip install -r requirements.txt
+```
+
+## 4. Configure Environment Variables
+Create a `.env` file in the root of the `quick-wiki` directory and add your API keys:
+```env
+OPENROUTER_API_KEY=your-openrouter-key-here
+TAVILY_API_KEY=your-tavily-key-here
+```
+
+## 5. Run the Server
+Start the FastAPI application with Uvicorn (hot-reloading enabled):
+```bash
+python -m uvicorn main:app --reload
+```
+
+## 6. Test the API
+Once the server is running, you can test it directly in your browser:
+- **Interactive API Docs (Swagger UI):** Open [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Test Endpoint:** Try out the `/api/research` POST endpoint with a JSON payload like:
+  ```json
+  {
+    "topic": "Impact of AI"
+  }
+  ```
