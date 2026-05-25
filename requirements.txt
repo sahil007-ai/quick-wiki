@@ -1,0 +1,10 @@
+pydantic
+langchain
+langchain-core
+langchain-community
+langchain-openrouter
+langchain-tavily
+langgraph
+wikipedia
+tavily-python
+python-dotenv

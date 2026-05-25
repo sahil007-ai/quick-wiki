@@ -1,4 +1,8 @@
 import operator
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from pydantic import BaseModel, Field
 from typing import Annotated, List
 from typing_extensions import TypedDict
@@ -6,14 +10,14 @@ from typing_extensions import TypedDict
 from langchain_community.document_loaders import WikipediaLoader
 from langchain_tavily import TavilySearch  # updated 1.0
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, get_buffer_string
-from langchain_openai import ChatOpenAI
+from langchain_openrouter import ChatOpenRouter
 
 from langgraph.constants import Send
 from langgraph.graph import END, MessagesState, START, StateGraph
 
 ### LLM
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0) 
+llm = ChatOpenRouter(model="google/gemini-2.5-flash", temperature=0) 
 
 ### Schema 
 
