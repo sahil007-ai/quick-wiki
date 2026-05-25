@@ -28,9 +28,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",          # Local development
         "https://sahil.page",             # Production
-        "https://*.vercel.app",           # Vercel previews
-        "https://*.up.railway.app"        # Railway previews
+        "https://www.sahil.page",         # Production www
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Vercel previews
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
