@@ -126,14 +126,26 @@ async def conduct_research(request: ResearchRequest):
         # Execute the LangGraph workflow
         final_state = graph.invoke(initial_state)
         
-        # Extract analyst information
-        analysts_info = [
-            AnalystInfo(
-                name=analyst.name,
-                role=analyst.role,
-                affiliation=analyst.affiliation
-            ) for analyst in final_state.get("analysts", [])
-        ]
+        # Extract analyst information - analysts are Pydantic models, not dicts
+        analysts_list = final_state.get("analysts", [])
+        analysts_info = []
+        
+        for analyst in analysts_list:
+            # Handle both dict and Pydantic model formats
+            if hasattr(analyst, 'name'):
+                # It's a Pydantic model
+                analysts_info.append(AnalystInfo(
+                    name=analyst.name,
+                    role=analyst.role,
+                    affiliation=analyst.affiliation
+                ))
+            elif isinstance(analyst, dict):
+                # It's a dict
+                analysts_info.append(AnalystInfo(
+                    name=analyst.get('name', ''),
+                    role=analyst.get('role', ''),
+                    affiliation=analyst.get('affiliation', '')
+                ))
         
         # Get final report
         final_report = final_state.get("final_report", "")
