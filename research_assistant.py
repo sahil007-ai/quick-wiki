@@ -184,32 +184,46 @@ Convert this final question into a well-structured web search query"""
 def search_web(state: InterviewState):
     """Retrieve docs from web search"""
 
-    # Search
-    tavily_search = TavilySearch(max_results=3)
+    try:
+        # Search
+        tavily_search = TavilySearch(max_results=3)
 
-    # Search query
-    structured_llm = llm.with_structured_output(SearchQuery)
-    search_query = structured_llm.invoke([search_instructions] + state["messages"])
+        # Search query
+        structured_llm = llm.with_structured_output(SearchQuery)
+        search_query = structured_llm.invoke([search_instructions] + state["messages"])
+        
+        # Validate search query
+        if not search_query or not hasattr(search_query, 'search_query') or not search_query.search_query:
+            print("DEBUG: No valid search query generated, skipping search")
+            return {"context": []}
 
-    # Search
-    data = tavily_search.invoke({"query": search_query.search_query})
-    
-    # Handle different response formats from Tavily
-    if isinstance(data, dict):
-        search_docs = data.get("results", [])
-    elif isinstance(data, list):
-        search_docs = data
-    else:
-        # If data is a string or other type, wrap it
-        search_docs = []
+        print(f"DEBUG: Searching for: {search_query.search_query}")
 
-    # Format
-    formatted_search_docs = "\n\n---\n\n".join(
-        [
-            f'<Document href="{doc["url"]}"/>\n{doc["content"]}\n</Document>'
-            for doc in search_docs
-        ]
-    )
+        # Search
+        data = tavily_search.invoke({"query": search_query.search_query})
+        print(f"DEBUG: Tavily response type: {type(data)}")
+        
+        # Handle different response formats from Tavily
+        if isinstance(data, dict):
+            search_docs = data.get("results", [])
+        elif isinstance(data, list):
+            search_docs = data
+        else:
+            # If data is a string or other type, wrap it
+            print(f"DEBUG: Unexpected Tavily response type: {type(data)}, value: {str(data)[:200]}")
+            search_docs = []
+
+        # Format
+        formatted_search_docs = "\n\n---\n\n".join(
+            [
+                f'<Document href="{doc["url"]}"/>\n{doc["content"]}\n</Document>'
+                for doc in search_docs
+            ]
+        )
+        
+    except Exception as e:
+        print(f"DEBUG: Search error: {e}")
+        formatted_search_docs = ""
 
     return {"context": [formatted_search_docs]}
 
