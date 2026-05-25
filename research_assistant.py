@@ -193,7 +193,15 @@ def search_web(state: InterviewState):
 
     # Search
     data = tavily_search.invoke({"query": search_query.search_query})
-    search_docs = data.get("results", data)
+    
+    # Handle different response formats from Tavily
+    if isinstance(data, dict):
+        search_docs = data.get("results", [])
+    elif isinstance(data, list):
+        search_docs = data
+    else:
+        # If data is a string or other type, wrap it
+        search_docs = []
 
     # Format
     formatted_search_docs = "\n\n---\n\n".join(
