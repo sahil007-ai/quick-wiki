@@ -169,10 +169,24 @@ async def conduct_research(request: ResearchRequest):
     except HTTPException as he:
         raise he
     except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Research failed: {str(e)}"
-        )
+        error_msg = str(e)
+        # Provide more helpful error messages for common issues
+        if "Expecting value" in error_msg or "JSONDecodeError" in error_msg:
+            user_msg = (
+                "The AI model returned an unexpected response. This usually happens due to "
+                "temporary API issues or rate limits. Please try again in a moment."
+            )
+        elif "rate limit" in error_msg.lower() or "429" in error_msg:
+            user_msg = "Rate limit reached on the AI service. Please wait a moment and try again."
+        elif "timeout" in error_msg.lower():
+            user_msg = "The research request timed out. Please try with fewer analysts or a simpler topic."
+        elif "api key" in error_msg.lower() or "unauthorized" in error_msg.lower():
+            user_msg = "API authentication issue. Please contact the site owner."
+        else:
+            user_msg = f"Research failed: {error_msg}"
+
+        print(f"ERROR: {error_msg}")
+        raise HTTPException(status_code=500, detail=user_msg)
 
 # Run the server (for local testing)
 if __name__ == "__main__":
