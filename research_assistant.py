@@ -101,7 +101,7 @@ analyst_instructions = """You are tasked with creating a set of AI analyst perso
 
 
 def create_analysts(state: GenerateAnalystsState):
-    """Create analysts"""
+    """Create analysts with retry logic for transient failures"""
 
     topic = state["topic"]
     max_analysts = state["max_analysts"]
@@ -117,14 +117,32 @@ def create_analysts(state: GenerateAnalystsState):
         max_analysts=max_analysts,
     )
 
-    # Generate question
-    analysts = structured_llm.invoke(
-        [SystemMessage(content=system_message)]
-        + [HumanMessage(content="Generate the set of analysts.")]
-    )
+    # Retry up to 3 times for transient LLM failures (empty responses, JSON parse errors)
+    last_error = None
+    for attempt in range(3):
+        try:
+            print(f"DEBUG: create_analysts attempt {attempt + 1}/3")
+            analysts = structured_llm.invoke(
+                [SystemMessage(content=system_message)]
+                + [HumanMessage(content="Generate the set of analysts.")]
+            )
 
-    # Write the list of analysis to state
-    return {"analysts": analysts.analysts}
+            # Validate response
+            if analysts and hasattr(analysts, 'analysts') and analysts.analysts:
+                print(f"DEBUG: Successfully created {len(analysts.analysts)} analysts")
+                return {"analysts": analysts.analysts}
+            else:
+                print(f"DEBUG: Empty analysts response on attempt {attempt + 1}")
+                last_error = "LLM returned empty analysts list"
+        except Exception as e:
+            last_error = str(e)
+            print(f"DEBUG: create_analysts attempt {attempt + 1} failed: {e}")
+
+    # All retries failed - raise a clear error
+    raise ValueError(
+        f"Failed to generate analysts after 3 attempts. "
+        f"This may be due to LLM rate limits or API issues. Last error: {last_error}"
+    )
 
 
 def human_feedback(state: GenerateAnalystsState):
@@ -229,24 +247,35 @@ def search_web(state: InterviewState):
 
 
 def search_wikipedia(state: InterviewState):
-    """Retrieve docs from wikipedia"""
+    """Retrieve docs from wikipedia with error handling"""
 
-    # Search query
-    structured_llm = llm.with_structured_output(SearchQuery)
-    search_query = structured_llm.invoke([search_instructions] + state["messages"])
+    try:
+        # Search query
+        structured_llm = llm.with_structured_output(SearchQuery)
+        search_query = structured_llm.invoke([search_instructions] + state["messages"])
 
-    # Search
-    search_docs = WikipediaLoader(
-        query=search_query.search_query, load_max_docs=2
-    ).load()
+        # Validate search query
+        if not search_query or not hasattr(search_query, 'search_query') or not search_query.search_query:
+            print("DEBUG: No valid search query for Wikipedia, skipping")
+            return {"context": [""]}
 
-    # Format
-    formatted_search_docs = "\n\n---\n\n".join(
-        [
-            f'<Document source="{doc.metadata["source"]}" page="{doc.metadata.get("page", "")}"/>\n{doc.page_content}\n</Document>'
-            for doc in search_docs
-        ]
-    )
+        print(f"DEBUG: Wikipedia search for: {search_query.search_query}")
+
+        # Search
+        search_docs = WikipediaLoader(
+            query=search_query.search_query, load_max_docs=2
+        ).load()
+
+        # Format
+        formatted_search_docs = "\n\n---\n\n".join(
+            [
+                f'<Document source="{doc.metadata["source"]}" page="{doc.metadata.get("page", "")}"/>\n{doc.page_content}\n</Document>'
+                for doc in search_docs
+            ]
+        )
+    except Exception as e:
+        print(f"DEBUG: Wikipedia search error: {e}")
+        formatted_search_docs = ""
 
     return {"context": [formatted_search_docs]}
 
