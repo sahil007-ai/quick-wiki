@@ -23,7 +23,20 @@ from langgraph.graph import END, MessagesState, START, StateGraph
 
 ### LLM
 
+# Note: google/gemini-2.5-flash has known issues with structured output due to
+# its "thinking mode" interfering with JSON generation, causing intermittent
+# empty responses and "Expecting value: line 1 column 1 (char 0)" errors.
+#
+# More reliable alternatives for structured output:
+#   - "openai/gpt-4o-mini"            - Best reliability, cheap, fast
+#   - "google/gemini-2.5-flash-lite"  - No thinking mode, faster
+#   - "anthropic/claude-3-5-haiku"    - Excellent at structured output
+#
+# We use a separate model for structured output (analyst/search query generation)
+# vs free-form text (questions, answers, reports) for maximum reliability.
+
 llm = ChatOpenRouter(model="google/gemini-2.5-flash", temperature=0)
+structured_llm_model = ChatOpenRouter(model="openai/gpt-4o-mini", temperature=0)
 
 ### Schema
 
@@ -107,8 +120,8 @@ def create_analysts(state: GenerateAnalystsState):
     max_analysts = state["max_analysts"]
     human_analyst_feedback = state.get("human_analyst_feedback", "")
 
-    # Enforce structured output
-    structured_llm = llm.with_structured_output(Perspectives)
+    # Enforce structured output - use reliable model for JSON output
+    structured_llm = structured_llm_model.with_structured_output(Perspectives)
 
     # System message
     system_message = analyst_instructions.format(
@@ -206,8 +219,8 @@ def search_web(state: InterviewState):
         # Search
         tavily_search = TavilySearch(max_results=3)
 
-        # Search query
-        structured_llm = llm.with_structured_output(SearchQuery)
+        # Search query - use reliable model for structured output
+        structured_llm = structured_llm_model.with_structured_output(SearchQuery)
         search_query = structured_llm.invoke([search_instructions] + state["messages"])
         
         # Validate search query
@@ -250,8 +263,8 @@ def search_wikipedia(state: InterviewState):
     """Retrieve docs from wikipedia with error handling"""
 
     try:
-        # Search query
-        structured_llm = llm.with_structured_output(SearchQuery)
+        # Search query - use reliable model for structured output
+        structured_llm = structured_llm_model.with_structured_output(SearchQuery)
         search_query = structured_llm.invoke([search_instructions] + state["messages"])
 
         # Validate search query
